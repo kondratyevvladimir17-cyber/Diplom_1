@@ -5,68 +5,77 @@ import org.junit.runners.Parameterized;
 import praktikum.Bun;
 import praktikum.Burger;
 import praktikum.Ingredient;
+import praktikum.IngredientType;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import static org.junit.Assert.assertTrue;
-import static praktikum.IngredientType.FILLING;
-import static praktikum.IngredientType.SAUCE;
+import static org.mockito.Mockito.when;
+import org.mockito.Mockito;
+import java.util.*;
 
 
 @RunWith(Parameterized.class)
 public class BurgerParamTests {
 
+    private Bun bun;
+    private Ingredient ingredientMock;
     private Burger burger;
 
     private final String bunName;
     private final float bunPrice;
-    private final List<Ingredient> ingredients;
+    private final IngredientType ingredientType;
+    private final String ingredientName;
+    private final float ingredientPrice;
+    private final String expectedSubstring;
 
-    public BurgerParamTests(String bunName, float bunPrice,
-                                         List<Ingredient> ingredients) {
+    public BurgerParamTests(String bunName, float bunPrice, IngredientType ingredientType,
+                            String ingredientName, float ingredientPrice, String expectedSubstring) {
         this.bunName = bunName;
         this.bunPrice = bunPrice;
-        this.ingredients = ingredients;
+        this.ingredientType = ingredientType;
+        this.ingredientName = ingredientName;
+        this.ingredientPrice = ingredientPrice;
+        this.expectedSubstring = expectedSubstring;
     }
 
     @Parameterized.Parameters
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][]{
-                {
-                        "Зерновая", 70.0f,
-                        List.of(new Ingredient(SAUCE, "Песто", 199.99f))
-                },
 
-                {
-                        "Бриошь", 90.0f,
-                        List.of(
-                                new Ingredient(FILLING, "Сыр", 200.0f)
-                        )
-                }
+                {"Зерновая", 70.0f, IngredientType.SAUCE, "Песто", 199.99f, "(==== Зерновая ===="},
+
+                {"Зерновая", 70.0f, IngredientType.SAUCE, "Песто", 199.99f, "= sauce Песто ="},
+
+                {"Бриошь", 90.0f, IngredientType.FILLING, "Сыр", 250.00f, "(==== Бриошь ===="},
+
+                {"Бриошь", 90.0f, IngredientType.FILLING, "Сыр", 250.00f, "= filling Сыр ="},
+
+                {"Бриошь", 90.0f, IngredientType.FILLING, "Сыр", 250.00f, "Price: "}
         });
     }
 
     @Before
     public void setUp() {
-        Bun bun = new Bun(bunName, bunPrice);
+
+        bun = Mockito.spy(new Bun(bunName, bunPrice));
+
+        when(bun.getName()).thenReturn(bunName);
+        when(bun.getPrice()).thenReturn(bunPrice);
+
+        ingredientMock = Mockito.mock(Ingredient.class);
+        when(ingredientMock.getType()).thenReturn(ingredientType);
+        when(ingredientMock.getName()).thenReturn(ingredientName);
+        when(ingredientMock.getPrice()).thenReturn(ingredientPrice);
+
         burger = new Burger();
         burger.setBuns(bun);
-
-        for (Ingredient ingredient : ingredients) {
-            burger.addIngredient(ingredient);
-        }
+        burger.addIngredient(ingredientMock);
     }
+
     @Test
-    public void getReceiptTest() {
+    public void getReceiptContainsLine() {
         String receipt = burger.getReceipt();
-        String bunHeader = String.format("(==== %s ====)", bunName);
-        assertTrue(receipt.contains(bunHeader));
-        for (Ingredient ing : ingredients) {
-            String typeLower = ing.getType().toString().toLowerCase();
-            String expectedLine = String.format("= %s %s =", typeLower, ing.getName());
-            assertTrue(receipt.contains(expectedLine));
-        }
-        assertTrue(receipt.contains("Price:"));
+        assertTrue("Чек должен содержать строку: '" + expectedSubstring + "'.\nПолный чек:\n" + receipt,
+                receipt.contains(expectedSubstring));
     }
 }
-
